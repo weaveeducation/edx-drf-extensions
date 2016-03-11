@@ -6,6 +6,15 @@ python:
   - 2.7
   - 3.5
 
+env:
+  - TOXENV=django18
+  - TOXENV=django19
+
+matrix:
+ include:
+  - python: 3.5
+    env: TOXENV=quality
+
 cache:
   - pip
 
@@ -14,7 +23,7 @@ install:
   - make requirements
 
 script:
-  - make validate
+  - make test
 
 after_success:
   - codecov

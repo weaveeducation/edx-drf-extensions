@@ -8,16 +8,12 @@ clean:
 	rm -rf build
 
 quality:
-	pep8 --config=.pep8 $(PACKAGE)
-	pylint --rcfile=pylintrc $(PACKAGE)
+	tox -e quality
 
 requirements:
 	pip install -r test_requirements.txt
 
 test:
-	django-admin.py test $(PACKAGE) --settings=test_settings --with-coverage --cover-package=$(PACKAGE)
-	coverage report
+	tox
 
-validate: clean test quality
-
-.PHONY: clean, quality, requirements, validate
+.PHONY: clean, quality, requirements
