@@ -21,6 +21,8 @@ setup(
     ],
     packages=['edx_rest_framework_extensions'],
     install_requires=[
+        'django>=1.8.9,<1.9',
         'djangorestframework>=3.2.3,<4.0.0',
+        'requests>=2.7.0,<3.0.0',
     ]
 )

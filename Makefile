@@ -15,10 +15,8 @@ requirements:
 	pip install -r test_requirements.txt
 
 test:
-	nosetests --with-coverage --cover-inclusive --cover-branches \
-		--cover-html --cover-html-dir=$(COVERAGE)/html/ \
-		--cover-xml --cover-xml-file=$(COVERAGE)/coverage.xml \
-		--cover-package=$(PACKAGE) $(PACKAGE)/
+	django-admin.py test $(PACKAGE) --settings=test_settings --with-coverage --cover-package=$(PACKAGE)
+	coverage report
 
 validate: clean test quality
 
