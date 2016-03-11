@@ -1,0 +1,29 @@
+sudo: false
+
+language: python
+
+python:
+  - 2.7
+  - 3.5
+
+cache:
+  - pip
+
+install:
+  - pip install -U pip wheel codecov
+  - make requirements
+
+script:
+  - make validate
+
+after_success:
+  - codecov
+
+deploy:
+  provider: pypi
+  user: edx
+  password:
+    secure: ZUB9zev98BgOj8ClnsasRiAmTHEX6jRHYVT/gVPf2DG2NzWiwD8o/2JDkI2w919+MkiQZw7BnxpBwbSOyepmJIEZwZgSxJzbVcksOkw2zfKfJjdI1EGxQaSf4t6uAiSO9mzQcw9/YxJXdhb3Dn5dtwNsOppO8zUr17BK94kteyEMTj6sovWlMzwi+Svo+cs6SOPCfczNXhk/ai0DZ/6AgJ5R/Rccd8qzEDwBiIzguIyvYKnejagQ5T/weGy4zfMCT8/RA1I9QhQelbltzeCb5lwmgBBQCORHqTnnfGCBjSlCCe0t2DyElDwrkfDF6rPtwaQVSseXtPa8scJ19H4+1s+03TB9JN3FrKNW9qzlWTU3R7+q2vcn1VZ1tGG6cEpGa4Tkn4LS1ZnUknFpikQJYMsGvlYOtkO6Cxc6jEXcDaSQ0diMmqZqz0pt31D7OX9LuY7el2w/mcIkFQd2qoWVaHhwuF2heqXgb2JHnVaFI8f7CRlnQnyYeN2na5fQK8P/tKaaKRGRoWG3ppfPJstFxKMrHeEL86m1OawGs6hoYsC+jVozPyINxgNj53CXf7HGeIOfkVEEopRx8Ru16UwwgerueIon6g7MCbQmA+1dqM69DZ25zYNst2BLJOtZx278cR/zxsX2Zl53mVc/3JMeF718phtzBj3Qp328fezgzxk=
+  distributions: "sdist bdist_wheel"
+  on:
+    tags: true
