@@ -12,6 +12,7 @@ quality:
 
 requirements:
 	pip install -r test_requirements.txt
+	pip install -r docs/requirements.txt
 
 test:
 	tox
