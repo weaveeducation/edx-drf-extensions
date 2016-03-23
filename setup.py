@@ -3,9 +3,11 @@
 
 from setuptools import setup
 
+import edx_rest_framework_extensions
+
 setup(
     name='edx-drf-extensions',
-    version='0.1.1',
+    version=edx_rest_framework_extensions.__version__,
     description='edX extensions of Django REST Framework',
     author='edX',
     url='https://github.com/edx/edx-drf-extensions',

@@ -26,3 +26,5 @@ DATABASES = {
 }
 
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
+
+EDX_DRF_EXTENSIONS = {}
