@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """ Tests for authentication classes. """
 
+import datetime
 import json
 
 import httpretty
@@ -21,13 +22,15 @@ class AccessTokenMixin(object):
     """ Test mixin for dealing with OAuth2 access tokens. """
     DEFAULT_TOKEN = 'abc123'
 
-    def mock_access_token_response(self, status=200, token=DEFAULT_TOKEN, username='fake-user'):
+    def mock_access_token_response(self, status=200, token=DEFAULT_TOKEN, username='fake-user', expires=None):
         """ Mock the access token endpoint response of the OAuth2 provider. """
         url = '{root}/{token}'.format(root=OAUTH2_ACCESS_TOKEN_URL.rstrip('/'), token=token)
+        expires = expires or (datetime.datetime.utcnow() + datetime.timedelta(days=1))
+
         httpretty.register_uri(
             httpretty.GET,
             url,
-            body=json.dumps({'username': username, 'scope': 'read', 'expires_in': 60}),
+            body=json.dumps({'username': username, 'scope': 'read', 'expires': expires.isoformat()}),
             content_type="application/json",
             status=status
         )
@@ -36,13 +39,14 @@ class AccessTokenMixin(object):
 @override_settings(OAUTH2_ACCESS_TOKEN_URL=OAUTH2_ACCESS_TOKEN_URL)
 class BearerAuthenticationTests(AccessTokenMixin, TestCase):
     """ Tests for the BearerAuthentication class. """
+    TOKEN_NAME = 'Bearer'
 
     def setUp(self):
         super(BearerAuthenticationTests, self).setUp()
         self.auth = BearerAuthentication()
         self.factory = RequestFactory()
 
-    def create_authenticated_request(self, token=AccessTokenMixin.DEFAULT_TOKEN, token_name='Bearer'):
+    def create_authenticated_request(self, token=AccessTokenMixin.DEFAULT_TOKEN, token_name=TOKEN_NAME):
         """ Returns a Request with the authorization set using the specified values. """
         auth_header = '{token_name} {token}'.format(token_name=token_name, token=token)
         request = self.factory.get('/', HTTP_AUTHORIZATION=auth_header)
@@ -55,6 +59,11 @@ class BearerAuthenticationTests(AccessTokenMixin, TestCase):
 
         request = self.create_authenticated_request()
         self.assertEqual(self.auth.authenticate(request), (user, self.DEFAULT_TOKEN))
+
+    def assert_authentication_failed(self, token=AccessTokenMixin.DEFAULT_TOKEN, token_name=TOKEN_NAME):
+        """ Assert authentication fails for a generated request. """
+        request = self.create_authenticated_request(token=token, token_name=token_name)
+        self.assertRaises(AuthenticationFailed, self.auth.authenticate, request)
 
     def test_authenticate_header(self):
         """ The method should return the string Bearer. """
@@ -75,12 +84,10 @@ class BearerAuthenticationTests(AccessTokenMixin, TestCase):
         """ If no token is supplied, or if the token contains spaces, the method should raise an exception. """
 
         # Missing token
-        request = self.create_authenticated_request('')
-        self.assertRaises(AuthenticationFailed, self.auth.authenticate, request)
+        self.assert_authentication_failed(token='')
 
         # Token with spaces
-        request = self.create_authenticated_request('abc 123 456')
-        self.assertRaises(AuthenticationFailed, self.auth.authenticate, request)
+        self.assert_authentication_failed(token='abc 123 456')
 
     def test_authenticate_invalid_token_name(self):
         """ If the token name is not Bearer, the method should return None. """
@@ -91,26 +98,27 @@ class BearerAuthenticationTests(AccessTokenMixin, TestCase):
     def test_authenticate_missing_user(self):
         """ If the user matching the access token does not exist, the method should raise an exception. """
         self.mock_access_token_response()
-        request = self.create_authenticated_request()
-
-        self.assertRaises(AuthenticationFailed, self.auth.authenticate, request)
+        self.assert_authentication_failed()
 
     @httpretty.activate
     def test_authenticate_inactive_user(self):
         """ If the user matching the access token is inactive, the method should raise an exception. """
         user = factories.UserFactory(is_active=False)
-
         self.mock_access_token_response(username=user.username)
-
-        request = self.create_authenticated_request()
-        self.assertRaises(AuthenticationFailed, self.auth.authenticate, request)
+        self.assert_authentication_failed()
 
     @httpretty.activate
     def test_authenticate_invalid_token_response(self):
         """ If the OAuth2 provider does not return HTTP 200, the method should return raise an exception. """
         self.mock_access_token_response(status=400)
-        request = self.create_authenticated_request()
-        self.assertRaises(AuthenticationFailed, self.auth.authenticate, request)
+        self.assert_authentication_failed()
+
+    @httpretty.activate
+    def test_authenticate_expired_token(self):
+        """ If the provided token is expired, the method should raise an exception. """
+        user = factories.UserFactory()
+        self.mock_access_token_response(username=user.username, expires=datetime.datetime.utcnow())
+        self.assert_authentication_failed()
 
     @httpretty.activate
     def test_authenticate(self):

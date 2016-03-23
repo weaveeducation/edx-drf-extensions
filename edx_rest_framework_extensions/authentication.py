@@ -1,8 +1,10 @@
 """ Authentication classes. """
 
+import datetime
 import logging
 
 import requests
+from dateutil.parser import parse
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import exceptions
@@ -69,6 +71,12 @@ class BearerAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed('Invalid token.')
 
         data = response.json()
+
+        # Validate the expiration datetime
+        expires = parse(data['expires'])
+
+        if expires < datetime.datetime.utcnow():
+            raise exceptions.AuthenticationFailed('Token expired.')
 
         try:
             user = User.objects.get(username=data['username'])
