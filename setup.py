@@ -30,6 +30,7 @@ setup(
     install_requires=[
         'django>=1.8.9,<1.10',
         'djangorestframework>=3.2.3,<4.0.0',
+        'djangorestframework-jwt>=1.7.2,<2.0.0',
         'python-dateutil>=2.0',
         'requests>=2.7.0,<3.0.0',
     ],
