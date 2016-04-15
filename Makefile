@@ -11,6 +11,7 @@ quality:
 	tox -e quality
 
 requirements:
+	pip install -e .    # Install this package and, more importantly for autodoc, its dependencies
 	pip install -r test_requirements.txt
 	pip install -r docs/requirements.txt
 
