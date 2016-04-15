@@ -31,3 +31,4 @@ Table of Contents
     settings
     authentication
     permissions
+    utils

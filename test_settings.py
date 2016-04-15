@@ -28,3 +28,9 @@ DATABASES = {
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 
 EDX_DRF_EXTENSIONS = {}
+
+JWT_AUTH = {
+    'JWT_AUDIENCE': 'test-aud',
+    'JWT_ISSUER': 'test-iss',
+    'JWT_SECRET_KEY': 'tell-no-one',
+}
