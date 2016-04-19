@@ -11,6 +11,7 @@ from django.conf import settings
 
 DEFAULT_SETTINGS = {
     'OAUTH2_USER_INFO_URL': None,
+    'JWT_PAYLOAD_USER_ATTRIBUTES': ('email',)
 }
 
 

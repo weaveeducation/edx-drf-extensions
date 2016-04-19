@@ -22,3 +22,20 @@ about the user associated with the provided access token. This endpoint should r
 and ``HTTP 200`` if, and only if, the access token is valid. See
 :meth:`BearerAuthentication.process_user_info_response() <authentication.BearerAuthentication.process_user_info_response>`
 for an example of the expected data format.
+
+
+JwtAuthentication
+-----------------
+
+.. py:currentmodule:: edx_rest_framework_extensions
+
+These settings are used by the :class:`~authentication.JwtAuthentication` class.
+
+``JWT_PAYLOAD_USER_ATTRIBUTES``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Default: ``('email',)``
+
+The list of user attributes in the JWT payload that :class:`~authentication.JwtAuthentication` will use to update the
+local ``User`` model. These payload attributes should exactly match the names the attributes on the local ``User``
+model.
