@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """ Tests for authentication classes. """
-
 import json
+from logging import Logger
 
 import httpretty
 import mock
@@ -9,8 +9,9 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings, RequestFactory, TestCase
 from requests import RequestException
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_jwt.authentication import JSONWebTokenAuthentication
 
-from edx_rest_framework_extensions.authentication import BearerAuthentication
+from edx_rest_framework_extensions.authentication import BearerAuthentication, JwtAuthentication
 from edx_rest_framework_extensions.tests import factories
 
 OAUTH2_ACCESS_TOKEN_URL = 'http://example.com/oauth2/access_token/'
@@ -21,7 +22,6 @@ USER_INFO = {
     'last_name': 'Doê',
     'email': 'jdoe@example.com',
 }
-
 User = get_user_model()
 
 
@@ -167,3 +167,85 @@ class BearerAuthenticationTests(AccessTokenMixin, TestCase):
             self.assertRaises(AuthenticationFailed, self.auth.authenticate, request)
 
         self.assertEqual(User.objects.all().count(), original_user_count)
+
+
+class JwtAuthenticationTests(TestCase):
+    """ JWT Authentication class tests. """
+    def test_authenticate_credentials_user_creation(self):
+        """ Test whether the user model is being created and assigned fields from the payload. """
+
+        email = 'gcostanza@gmail.com'
+        username = 'gcostanza'
+
+        payload = {'preferred_username': username, 'email': email}
+        user = JwtAuthentication().authenticate_credentials(payload)
+        self.assertEqual(user.username, username)
+        self.assertEqual(user.email, email)
+
+    def test_authenticate_credentials_user_updates_default_attributes(self):
+        """ Test whether the user model is being assigned default fields from the payload. """
+
+        username = 'gcostanza'
+        old_email = 'tbone@gmail.com'
+        new_email = 'koko@gmail.com'
+
+        user = factories.UserFactory(email=old_email, username=username, is_staff=False)
+        self.assertEqual(user.email, old_email)
+        self.assertFalse(user.is_staff)
+
+        payload = {'username': username, 'email': new_email, 'is_staff': True}
+
+        user = JwtAuthentication().authenticate_credentials(payload)
+        self.assertEqual(user.email, new_email)
+        self.assertFalse(user.is_staff)
+
+    @override_settings(EDX_DRF_EXTENSIONS={'JWT_PAYLOAD_USER_ATTRIBUTES': ('email', 'is_staff',)})
+    def test_authenticate_credentials_user_attributes_custom_attributes(self):
+        """ Test whether the user model is being assigned all custom fields from the payload. """
+
+        username = 'ckramer'
+        old_email = 'ckramer@hotmail.com'
+        new_email = 'cosmo@hotmail.com'
+
+        user = factories.UserFactory(email=old_email, username=username, is_staff=False)
+        self.assertEqual(user.email, old_email)
+        self.assertFalse(user.is_staff)
+
+        payload = {'username': username, 'email': new_email, 'is_staff': True}
+
+        user = JwtAuthentication().authenticate_credentials(payload)
+        self.assertEqual(user.email, new_email)
+        self.assertTrue(user.is_staff)
+
+    def test_authenticate_credentials_user_retrieval_failed(self):
+        """ Verify exceptions raised during user retrieval are properly logged. """
+
+        with mock.patch.object(User.objects, 'get_or_create', side_effect=ValueError):
+            with mock.patch.object(Logger, 'exception') as logger:
+                self.assertRaises(
+                    AuthenticationFailed,
+                    JwtAuthentication().authenticate_credentials,
+                    {'username': 'test', 'email': 'test@example.com'}
+                )
+                logger.assert_called_with('User retrieval failed.')
+
+    def test_authenticate_credentials_no_usernames(self):
+        """ Verify exceptions raised if no username specified. """
+        self.assertRaises(
+            AuthenticationFailed,
+            JwtAuthentication().authenticate_credentials,
+            {'email': 'test@example.com'}
+        )
+
+    def test_authenticate(self):
+        """ Verify exceptions raised during authentication are properly logged. """
+        request = RequestFactory().get('/')
+
+        with mock.patch.object(JSONWebTokenAuthentication, 'authenticate', side_effect=Exception):
+            with mock.patch.object(Logger, 'debug') as logger:
+                self.assertRaises(
+                    Exception,
+                    JwtAuthentication().authenticate,
+                    request
+                )
+                self.assertTrue(logger.called)
