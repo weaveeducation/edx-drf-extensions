@@ -230,12 +230,9 @@ class JwtAuthenticationTests(TestCase):
                 logger.assert_called_with('User retrieval failed.')
 
     def test_authenticate_credentials_no_usernames(self):
-        """ Verify exceptions raised if no username specified. """
-        self.assertRaises(
-            AuthenticationFailed,
-            JwtAuthentication().authenticate_credentials,
-            {'email': 'test@example.com'}
-        )
+        """ Verify an AuthenticationFailed exception is raised if the payload contains no username claim. """
+        with self.assertRaises(AuthenticationFailed):
+            JwtAuthentication().authenticate_credentials({'email': 'test@example.com'})
 
     def test_authenticate(self):
         """ Verify exceptions raised during authentication are properly logged. """
