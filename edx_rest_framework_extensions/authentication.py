@@ -188,7 +188,7 @@ class JwtAuthentication(JSONWebTokenAuthentication):
         username = payload.get('preferred_username') or payload.get('username')
 
         if username is None:
-            raise exceptions.AuthenticationFailed('Invalid payload.')
+            raise exceptions.AuthenticationFailed('JWT must include a preferred_username or username claim!')
         else:
             try:
                 user, __ = User.objects.get_or_create(username=username)
