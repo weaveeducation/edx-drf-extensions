@@ -6,8 +6,14 @@ EDX_DRF_EXTENSIONS = {
     'OAUTH2_ACCESS_TOKEN_URL': 'https://example.com/oauth2/access_token'
 }
 """
+import logging
+import warnings
 
 from django.conf import settings
+from rest_framework_jwt.settings import api_settings
+
+logger = logging.getLogger(__name__)
+
 
 DEFAULT_SETTINGS = {
     'OAUTH2_USER_INFO_URL': None,
@@ -33,3 +39,46 @@ def get_setting(name):
         return getattr(settings, 'EDX_DRF_EXTENSIONS', {})[name]
     except KeyError:
         return DEFAULT_SETTINGS[name]
+
+
+def _get_current_jwt_issuers():
+    """
+    Internal helper to retrieve the current set of JWT_ISSUERS from the JWT_AUTH configuration
+    Having this allows for easier testing/mocking
+    """
+    # If we have a 'JWT_ISSUERS' list defined, return it
+    return settings.JWT_AUTH.get('JWT_ISSUERS', None)
+
+
+def _get_deprecated_jwt_issuers():
+    """
+    Internal helper to retreive the deprecated set of JWT_ISSUER data from the JWT_AUTH configuration
+    Having this allows for easier testing/mocking
+    """
+    # If JWT_ISSUERS is not defined, attempt to return the deprecated settings.
+    warnings.simplefilter('default')
+    warnings.warn(
+        "'JWT_ISSUERS' list not defined, checking for deprecated settings.",
+        DeprecationWarning
+    )
+
+    return [
+        {
+            'ISSUER': api_settings.JWT_ISSUER,
+            'SECRET_KEY': api_settings.JWT_SECRET_KEY,
+            'AUDIENCE': api_settings.JWT_AUDIENCE
+        }
+    ]
+
+
+def get_jwt_issuers():
+    """
+    Retrieves the JWT_ISSUERS list from system configuraiton.  If no list is defined in JWT_AUTH/JWT_ISSUERS
+    an attempt is made to instead return the deprecated JWT configuration settings.
+    """
+    # If we have a 'JWT_ISSUERS' list defined, return it
+    jwt_issuers = _get_current_jwt_issuers()
+    if jwt_issuers:
+        return jwt_issuers
+    # If we do not, return the deprecated configuration
+    return _get_deprecated_jwt_issuers()
