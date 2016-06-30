@@ -29,8 +29,35 @@ TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 
 EDX_DRF_EXTENSIONS = {}
 
+# USER_SETTINGS overrides for djangorestframework-jwt APISettings class
+# See https://github.com/GetBlimp/django-rest-framework-jwt/blob/master/rest_framework_jwt/settings.py
 JWT_AUTH = {
+
     'JWT_AUDIENCE': 'test-aud',
+
+    'JWT_DECODE_HANDLER': 'edx_rest_framework_extensions.utils.jwt_decode_handler',
+
     'JWT_ISSUER': 'test-iss',
-    'JWT_SECRET_KEY': 'tell-no-one',
+
+    'JWT_LEEWAY': 1,
+
+    'JWT_SECRET_KEY': 'test-key',
+
+    'JWT_VERIFY_AUDIENCE': False,
+
+    'JWT_VERIFY_EXPIRATION': True,
+
+    # JWT_ISSUERS enables token decoding for multiple issuers (Note: This is not a native DRF-JWT field)
+    'JWT_ISSUERS': [
+        {
+            'ISSUER': 'test-issuer-1',
+            'SECRET_KEY': 'test-secret-key-1',
+            'AUDIENCE': 'test-audience-1',
+        },
+        {
+            'ISSUER': 'test-issuer-2',
+            'SECRET_KEY': 'test-secret-key-2',
+            'AUDIENCE': 'test-audience-2',
+        }
+    ],
 }
