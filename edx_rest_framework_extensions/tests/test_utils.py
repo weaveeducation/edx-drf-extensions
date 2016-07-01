@@ -89,3 +89,25 @@ class JWTDecodeHandlerTests(TestCase):
 
             msg = "All combinations of JWT issuers and secret keys failed to validate the token."
             patched_log.error.assert_any_call(msg)
+
+    def test_decode_failure_invalid_token(self):
+        """
+        Verifies the function logs decode failures, and raises an InvalidTokenError if the token cannot be decoded
+        """
+
+        # Create tokens using each invalid issuer and attempt to decode them against
+        # the valid issuers list, which won't work
+        with mock.patch('edx_rest_framework_extensions.utils.logger') as patched_log:
+            with self.assertRaises(jwt.InvalidTokenError):
+                # Attempt to decode an invalid token, which will fail with an InvalidTokenError
+                utils.jwt_decode_handler("invalid.token")
+
+            # Verify that the proper entries were written to the log file
+            msg = "Token decode failed for issuer 'test-issuer-1'"
+            patched_log.info.assert_any_call(msg, exc_info=True)
+
+            msg = "Token decode failed for issuer 'test-issuer-2'"
+            patched_log.info.assert_any_call(msg, exc_info=True)
+
+            msg = "All combinations of JWT issuers and secret keys failed to validate the token."
+            patched_log.error.assert_any_call(msg)
