@@ -80,7 +80,7 @@ def jwt_decode_handler(token):
                 algorithms=[api_settings.JWT_ALGORITHM]
             )
             return decoded
-        except jwt.DecodeError:
+        except jwt.InvalidTokenError:
             msg = "Token decode failed for issuer '{issuer}'".format(issuer=jwt_issuer['ISSUER'])
             logger.info(msg, exc_info=True)
 
