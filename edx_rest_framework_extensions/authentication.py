@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import exceptions
 from rest_framework.authentication import get_authorization_header, BaseAuthentication
 from rest_framework_jwt.authentication import JSONWebTokenAuthentication
+from rest_framework_jwt.authentication import jwt_decode_handler
 
 from edx_rest_framework_extensions.exceptions import UserInfoRetrievalFailed
 from edx_rest_framework_extensions.settings import get_setting
@@ -179,8 +180,20 @@ class JwtAuthentication(JSONWebTokenAuthentication):
         return get_setting('JWT_PAYLOAD_USER_ATTRIBUTE_MAPPING')
 
     def authenticate(self, request):
+        """ Authenticate the request.
+
+        Returns:
+            (User, dict): The authenticated user and decoded JWT payload, if the user is authenticated;
+            otherwise, `None`.
+        """
         try:
-            return super(JwtAuthentication, self).authenticate(request)
+            auth_tuple = super(JwtAuthentication, self).authenticate(request)
+            if not auth_tuple:
+                return None
+
+            user, jwt_value = auth_tuple
+            payload = jwt_decode_handler(jwt_value)
+            return user, payload
         except Exception as ex:
             # Errors in production do not need to be logged (as they may be noisy),
             # but debug logging can help quickly resolve issues during development.

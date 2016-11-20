@@ -27,3 +27,36 @@ class IsSuperuserTests(TestCase):
         request.user = user
         permission = IsSuperuser()
         self.assertFalse(permission.has_permission(request, None))
+
+
+@ddt.ddt
+class JwtScopePermissionsTests(TestCase):
+    """ Tests for the JwtScopePermissions permission class. """
+
+    def test_get_action_map(self):
+        """ Verify the method returns the appropriate action map, depending on if the view has an override. """
+        # Test the default
+        # Test with a view override
+        self.fail()
+
+    def test_get_resource(self):
+        """ Verify the method returns either the value set on the view or the value
+        determined from the view's serializer. """
+        self.fail()
+
+    def test_get_required_scopes(self):
+        """ Verify the method returns the list of scopes required to access a view endpoint."""
+        # TODO Use DDT here.
+        self.fail()
+
+    def test_has_permission(self):
+        """ Verify the method returns True if the user has permission to access the endpoint. """
+        self.fail()
+
+    def test_has_permission_with_invalid_authenticator(self):
+        """ Verify the method returns True if the request is not authenticated by `JwtAuthentication`. """
+        self.fail()
+
+    def test_has_permission_with_no_authentication(self):
+        """ Verify the method returns False if the request has not been authenticated. """
+        self.fail()
