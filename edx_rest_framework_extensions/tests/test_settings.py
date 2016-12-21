@@ -50,8 +50,8 @@ class SettingsTests(TestCase):
         mock_call = 'edx_rest_framework_extensions.settings._get_current_jwt_issuers'
         with mock.patch(mock_call, mock.Mock(return_value=None)):
             with warnings.catch_warnings(record=True) as warning_list:
-                self.assertEqual(get_jwt_issuers(), _deprecated)
                 warnings.simplefilter("default")
+                self.assertEqual(get_jwt_issuers(), _deprecated)
                 self.assertEqual(len(warning_list), 1)
                 self.assertTrue(issubclass(warning_list[-1].category, DeprecationWarning))
                 msg = "'JWT_ISSUERS' list not defined, checking for deprecated settings."
