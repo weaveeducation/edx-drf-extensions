@@ -56,7 +56,6 @@ def _get_deprecated_jwt_issuers():
     Having this allows for easier testing/mocking
     """
     # If JWT_ISSUERS is not defined, attempt to return the deprecated settings.
-    warnings.simplefilter('default')
     warnings.warn(
         "'JWT_ISSUERS' list not defined, checking for deprecated settings.",
         DeprecationWarning
