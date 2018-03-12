@@ -38,7 +38,8 @@ setup(
         'six==1.11.0',
         'django-ipware==1.1.0',
         'django-config-models==0.1.8',
-        'django-ratelimit==1.1.0'
+        'django-ratelimit==1.1.0',
+        'jsonfield==2.0.2'
     ],
     dependency_links=[
         'git+https://github.com/edx/django-rest-framework.git@1ceda7c086fddffd1c440cc86856441bbf0bd9cb#egg=djangorestframework==3.6.3'
