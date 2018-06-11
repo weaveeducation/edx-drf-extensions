@@ -12,6 +12,7 @@ INSTALLED_APPS = (
     'django.contrib.contenttypes',
     'django_nose',
     'edx_rest_framework_extensions',
+    'waffle',
 )
 
 DATABASES = {
@@ -42,6 +43,8 @@ JWT_AUTH = {
     'JWT_LEEWAY': 1,
 
     'JWT_SECRET_KEY': 'test-key',
+
+    'JWT_SUPPORTED_VERSION': '1.0.0',
 
     'JWT_VERIFY_AUDIENCE': False,
 
