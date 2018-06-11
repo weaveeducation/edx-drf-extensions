@@ -1,14 +1,23 @@
 """ Tests for utility functions. """
+import copy
 from time import time
 
 import ddt
 import jwt
 import mock
 from django.conf import settings
-from django.test import TestCase
+from django.test import override_settings, TestCase
 
 from edx_rest_framework_extensions.tests.factories import UserFactory
 from edx_rest_framework_extensions import utils
+
+
+def generate_jwt(user, scopes=None, filters=None):
+    """
+    Generate a valid JWT for authenticated requests.
+    """
+    access_token = generate_jwt_payload(user, scopes=scopes, filters=filters)
+    return generate_jwt_token(access_token)
 
 
 def generate_jwt_token(payload, signing_key=None):
@@ -19,21 +28,45 @@ def generate_jwt_token(payload, signing_key=None):
     return jwt.encode(payload, signing_key).decode('utf-8')
 
 
-def generate_jwt_payload(user):
+def generate_jwt_payload(user, scopes=None, filters=None, version='1.0.0'):
     """
-    Generate a valid JWT payload given a user.
+    Generate a valid JWT payload given a user and optionally scopes and filters.
     """
     jwt_issuer_data = settings.JWT_AUTH['JWT_ISSUERS'][0]
     now = int(time())
     ttl = 5
-    return {
+    payload = {
         'iss': jwt_issuer_data['ISSUER'],
         'aud': jwt_issuer_data['AUDIENCE'],
         'username': user.username,
         'email': user.email,
         'iat': now,
-        'exp': now + ttl
+        'exp': now + ttl,
+        'version': version,
     }
+    if scopes:
+        payload['scopes'] = scopes
+    if filters:
+        payload['filters'] = filters
+    return payload
+
+
+def exclude_from_jwt_auth_setting(key):
+    """
+    Clone the JWT_AUTH setting dict and remove the given key.
+    """
+    jwt_auth = copy.deepcopy(settings.JWT_AUTH)
+    del jwt_auth[key]
+    return jwt_auth
+
+
+def update_jwt_auth_setting(jwt_auth_overrides):
+    """
+    Clone the JWT_AUTH setting dict and update it with the given overrides.
+    """
+    jwt_auth = copy.deepcopy(settings.JWT_AUTH)
+    jwt_auth.update(jwt_auth_overrides)
+    return jwt_auth
 
 
 @ddt.ddt
@@ -103,6 +136,47 @@ class JWTDecodeHandlerTests(TestCase):
                 utils.jwt_decode_handler("invalid.token")
 
             # Verify that the proper entries were written to the log file
+            msg = "Token decode failed for issuer 'test-issuer-1'"
+            patched_log.info.assert_any_call(msg, exc_info=True)
+
+            msg = "Token decode failed for issuer 'test-issuer-2'"
+            patched_log.info.assert_any_call(msg, exc_info=True)
+
+            msg = "All combinations of JWT issuers and secret keys failed to validate the token."
+            patched_log.error.assert_any_call(msg)
+
+    @override_settings(JWT_AUTH=exclude_from_jwt_auth_setting('JWT_SUPPORTED_VERSION'))
+    def test_decode_supported_jwt_version_not_specified(self):
+        """
+        Verifies the JWT is decoded successfully when the JWT_SUPPORTED_VERSION setting is not specified.
+        """
+        token = generate_jwt_token(self.payload)
+        self.assertDictEqual(utils.jwt_decode_handler(token), self.payload)
+
+    @ddt.data('0.5.0', '1.0.0', '1.0.5', '1.5.0', '1.5.5')
+    def test_decode_supported_jwt_version(self, jwt_version):
+        """
+        Verifies the JWT is decoded successfully when the JWT_SUPPORTED_VERSION setting is not specified.
+        """
+        jwt_payload = generate_jwt_payload(self.user, version=jwt_version)
+        token = generate_jwt_token(jwt_payload)
+        self.assertDictEqual(utils.jwt_decode_handler(token), jwt_payload)
+
+    @override_settings(JWT_AUTH=update_jwt_auth_setting({'JWT_SUPPORTED_VERSION': '0.5.0'}))
+    def test_decode_unsupported_jwt_version(self):
+        """
+        Verifies the function logs decode failures, and raises an
+        InvalidTokenError if the token version is not supported.
+        """
+        with mock.patch('edx_rest_framework_extensions.utils.logger') as patched_log:
+            with self.assertRaises(jwt.InvalidTokenError):
+                token = generate_jwt_token(self.payload)
+                utils.jwt_decode_handler(token)
+
+            # Verify that the proper entries were written to the log file
+            msg = "Token decode failed due to unsupported JWT version number [%s]"
+            patched_log.info.assert_any_call(msg, '1.0.0')
+
             msg = "Token decode failed for issuer 'test-issuer-1'"
             patched_log.info.assert_any_call(msg, exc_info=True)
 

@@ -2,12 +2,15 @@
 import logging
 
 import jwt
+import semantic_version
 from django.conf import settings
 from rest_framework_jwt.settings import api_settings
 
 from edx_rest_framework_extensions.settings import get_jwt_issuers
 
+DEFAULT_JWT_SUPPORTED_VERSION = '1.0.0'
 logger = logging.getLogger(__name__)
+
 
 
 def jwt_decode_handler(token):
@@ -79,6 +82,7 @@ def jwt_decode_handler(token):
                 issuer=jwt_issuer['ISSUER'],
                 algorithms=[api_settings.JWT_ALGORITHM]
             )
+            verify_jwt_version(decoded)
             return decoded
         except jwt.InvalidTokenError:
             msg = "Token decode failed for issuer '{issuer}'".format(issuer=jwt_issuer['ISSUER'])
@@ -87,3 +91,32 @@ def jwt_decode_handler(token):
     msg = 'All combinations of JWT issuers and secret keys failed to validate the token.'
     logger.error(msg)
     raise jwt.InvalidTokenError(msg)
+
+
+def verify_jwt_version(decoded_token):
+    """
+    Verify that the JWT version is supported.
+    """
+    supported_version = semantic_version.Version(
+        settings.JWT_AUTH.get('JWT_SUPPORTED_VERSION', DEFAULT_JWT_SUPPORTED_VERSION)
+    )
+    jwt_version = semantic_version.Version(
+        decoded_token.get('version', supported_version)
+    )
+    if jwt_version.major > supported_version.major:
+        logger.info('Token decode failed due to unsupported JWT version number [%s]', str(jwt_version))
+        raise jwt.InvalidTokenError
+
+def decode_jwt_scopes(token):
+    """
+    Decode the JWT and return the scopes claim.
+    """
+    return jwt_decode_handler(token).get('scopes', [])
+
+
+def decode_jwt_filters(token):
+    """
+    Decode the JWT, parse the filters clain, and return a
+    list of (provider_type, filter_value) tuples.
+    """
+    return [jwt_filter.split(':') for jwt_filter in jwt_decode_handler(token).get('filters', [])]
