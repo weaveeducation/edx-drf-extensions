@@ -42,8 +42,9 @@ def generate_jwt_payload(user, scopes=None, filters=None, version='1.0.0'):
         'email': user.email,
         'iat': now,
         'exp': now + ttl,
-        'version': version,
     }
+    if version:
+        payload['version'] = version
     if scopes:
         payload['scopes'] = scopes
     if filters:
@@ -153,7 +154,7 @@ class JWTDecodeHandlerTests(TestCase):
         token = generate_jwt_token(self.payload)
         self.assertDictEqual(utils.jwt_decode_handler(token), self.payload)
 
-    @ddt.data('0.5.0', '1.0.0', '1.0.5', '1.5.0', '1.5.5')
+    @ddt.data(None, '0.5.0', '1.0.0', '1.0.5', '1.5.0', '1.5.5')
     def test_decode_supported_jwt_version(self, jwt_version):
         """
         Verifies the JWT is decoded successfully when the JWT_SUPPORTED_VERSION setting is not specified.

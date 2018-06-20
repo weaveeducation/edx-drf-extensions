@@ -100,7 +100,7 @@ def verify_jwt_version(decoded_token):
         settings.JWT_AUTH.get('JWT_SUPPORTED_VERSION', DEFAULT_JWT_SUPPORTED_VERSION)
     )
     jwt_version = semantic_version.Version(
-        decoded_token.get('version', supported_version)
+        decoded_token.get('version', str(supported_version))
     )
     if jwt_version.major > supported_version.major:
         logger.info('Token decode failed due to unsupported JWT version number [%s]', str(jwt_version))
