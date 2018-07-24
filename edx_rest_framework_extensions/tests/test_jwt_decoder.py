@@ -128,15 +128,7 @@ class JWTDecodeHandlerTests(TestCase):
                 # which will fail with an InvalidTokenError
                 jwt_decode_handler(token)
 
-            # Verify that the proper entries were written to the log file
-            msg = "Token decode failed for issuer 'test-issuer-1'"
-            patched_log.info.assert_any_call(msg, exc_info=True)
-
-            msg = "Token decode failed for issuer 'test-issuer-2'"
-            patched_log.info.assert_any_call(msg, exc_info=True)
-
-            msg = "All combinations of JWT issuers and secret keys failed to validate the token."
-            patched_log.error.assert_any_call(msg)
+            patched_log.exception.assert_any_call("Token verification failed.")
 
     def test_failure_invalid_token(self):
         """
@@ -150,15 +142,7 @@ class JWTDecodeHandlerTests(TestCase):
                 # Attempt to decode an invalid token, which will fail with an InvalidTokenError
                 jwt_decode_handler("invalid.token")
 
-            # Verify that the proper entries were written to the log file
-            msg = "Token decode failed for issuer 'test-issuer-1'"
-            patched_log.info.assert_any_call(msg, exc_info=True)
-
-            msg = "Token decode failed for issuer 'test-issuer-2'"
-            patched_log.info.assert_any_call(msg, exc_info=True)
-
-            msg = "All combinations of JWT issuers and secret keys failed to validate the token."
-            patched_log.error.assert_any_call(msg)
+            patched_log.exception.assert_any_call("Token verification failed.")
 
     @override_settings(JWT_AUTH=exclude_from_jwt_auth_setting('JWT_SUPPORTED_VERSION'))
     def test_supported_jwt_version_not_specified(self):
@@ -188,18 +172,8 @@ class JWTDecodeHandlerTests(TestCase):
                 token = _generate_jwt_token(self.payload)
                 jwt_decode_handler(token)
 
-            # Verify that the proper entries were written to the log file
             msg = "Token decode failed due to unsupported JWT version number [%s]"
             patched_log.info.assert_any_call(msg, '1.1.0')
-
-            msg = "Token decode failed for issuer 'test-issuer-1'"
-            patched_log.info.assert_any_call(msg, exc_info=True)
-
-            msg = "Token decode failed for issuer 'test-issuer-2'"
-            patched_log.info.assert_any_call(msg, exc_info=True)
-
-            msg = "All combinations of JWT issuers and secret keys failed to validate the token."
-            patched_log.error.assert_any_call(msg)
 
     def test_upgrade(self):
         """

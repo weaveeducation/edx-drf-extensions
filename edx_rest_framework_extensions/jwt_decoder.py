@@ -1,12 +1,15 @@
 """ JWT decoder utility functions. """
 import logging
+import sys
 
+from jwkest.jwk import KEYS
+from jwkest.jws import JWS
 import jwt
 from semantic_version import Version
 from django.conf import settings
 from rest_framework_jwt.settings import api_settings
 
-from edx_rest_framework_extensions.settings import get_jwt_issuers
+from edx_rest_framework_extensions.settings import get_jwt_issuers, get_first_jwt_issuer
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +29,7 @@ def jwt_decode_handler(token):
 
     Notes:
         * Requires "exp" and "iat" claims to be present in the token's payload.
-        * Supports multiple issuer decoding via settings.JWT_AUTH['JWT_ISSUERS'] (see below)
-        * Aids debugging by logging DecodeError and InvalidTokenError log entries when decoding fails.
+        * Aids debugging by logging InvalidTokenError log entries when decoding fails.
 
     Examples:
         Use with `djangorestframework-jwt <https://getblimp.github.io/django-rest-framework-jwt/>`_, by changing
@@ -40,24 +42,8 @@ def jwt_decode_handler(token):
                 'JWT_ISSUER': 'https://the.jwt.issuer',
                 'JWT_SECRET_KEY': 'the-jwt-secret-key',  (defaults to settings.SECRET_KEY)
                 'JWT_AUDIENCE': 'the-jwt-audience',
+                'JWT_PUBLIC_SIGNING_JWK_SET': 'the-jwk-set-of-public-signing-keys',
             }
-
-        Enable multi-issuer support by specifying a list of dictionaries as settings.JWT_AUTH['JWT_ISSUERS']:
-
-        .. code-block:: python
-
-            JWT_ISSUERS = [
-                    {
-                        'ISSUER': 'test-issuer-1',
-                        'SECRET_KEY': 'test-secret-key-1',
-                        'AUDIENCE': 'test-audience-1',
-                    },
-                    {
-                        'ISSUER': 'test-issuer-2',
-                        'SECRET_KEY': 'test-secret-key-2',
-                        'AUDIENCE': 'test-audience-2',
-                    }
-                ]
 
     Args:
         token (str): JWT to be decoded.
@@ -69,34 +55,10 @@ def jwt_decode_handler(token):
         MissingRequiredClaimError: Either the exp or iat claims is missing from the JWT payload.
         InvalidTokenError: Decoding fails.
     """
-
-    options = {
-        'verify_exp': api_settings.JWT_VERIFY_EXPIRATION,
-        'verify_aud': settings.JWT_AUTH.get('JWT_VERIFY_AUDIENCE', True),
-        'require_exp': True,
-        'require_iat': True,
-    }
-
-    for jwt_issuer in get_jwt_issuers():
-        try:
-            decoded_token = jwt.decode(
-                token,
-                jwt_issuer['SECRET_KEY'],
-                api_settings.JWT_VERIFY,
-                options=options,
-                leeway=api_settings.JWT_LEEWAY,
-                audience=jwt_issuer['AUDIENCE'],
-                issuer=jwt_issuer['ISSUER'],
-                algorithms=[api_settings.JWT_ALGORITHM]
-            )
-            return _set_token_defaults(decoded_token)
-        except jwt.InvalidTokenError:
-            msg = "Token decode failed for issuer '{issuer}'".format(issuer=jwt_issuer['ISSUER'])
-            logger.info(msg, exc_info=True)
-
-    msg = 'All combinations of JWT issuers and secret keys failed to validate the token.'
-    logger.error(msg)
-    raise jwt.InvalidTokenError(msg)
+    jwt_issuer = get_first_jwt_issuer()
+    _verify_jwt_signature(token, jwt_issuer)
+    decoded_token = _decode_and_verify_token(token, jwt_issuer)
+    return _set_token_defaults(decoded_token)
 
 
 def decode_jwt_scopes(token):
@@ -169,3 +131,64 @@ def _set_token_defaults(token):
     _set_is_restricted(token, token_version)
     _set_filters(token, token_version)
     return token
+
+
+def _verify_jwt_signature(token, jwt_issuer):
+    key_set = _get_signing_jwk_key_set(jwt_issuer)
+
+    try:
+        _ = JWS().verify_compact(token, key_set)
+    except Exception as exc:
+        logger.exception('Token verification failed.')
+        exc_info = sys.exc_info()
+        raise jwt.InvalidTokenError(exc_info[2])
+
+
+def _decode_and_verify_token(token, jwt_issuer):
+    options = {
+        'require_exp': True,
+        'require_iat': True,
+
+        'verify_exp': api_settings.JWT_VERIFY_EXPIRATION,
+        'verify_aud': settings.JWT_AUTH.get('JWT_VERIFY_AUDIENCE', True),
+        'verify_iss': False,  # TODO (ARCH-204): manually verify until issuer is configured correctly.
+        'verify_signature': False,  # Verified with JWS already
+    }
+
+    decoded_token = jwt.decode(
+        token,
+        jwt_issuer['SECRET_KEY'],
+        api_settings.JWT_VERIFY,
+        options=options,
+        leeway=api_settings.JWT_LEEWAY,
+        audience=jwt_issuer['AUDIENCE'],
+        issuer=jwt_issuer['ISSUER'],
+        algorithms=[api_settings.JWT_ALGORITHM],
+    )
+
+    # TODO (ARCH-204): verify issuer manually until it is properly configured.
+    token_issuer = decoded_token.get('iss')
+    issuer_matched = any(issuer['ISSUER'] == token_issuer for issuer in get_jwt_issuers())
+    if not issuer_matched:
+        logger.info('Token decode failed due to mismatched issuer [%s]', token_issuer)
+        raise jwt.InvalidTokenError('%s is not a valid issuer.', token_issuer)
+
+    return decoded_token
+
+
+def _get_signing_jwk_key_set(jwt_issuer):
+    """
+    Returns a JWK Keyset containing all active keys that are configured
+    for verifying signatures.
+    """
+    key_set = KEYS()
+
+    # asymmetric keys
+    signing_jwk_set = settings.JWT_AUTH.get('JWT_PUBLIC_SIGNING_JWK_SET')
+    if signing_jwk_set:
+        key_set.load_jwks(signing_jwk_set)
+
+    # symmetric key
+    key_set.add({'key': jwt_issuer['SECRET_KEY'], 'kty': 'oct'})
+
+    return key_set
