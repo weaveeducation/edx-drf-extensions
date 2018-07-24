@@ -37,6 +37,7 @@ setup(
         'django-waffle',
         'edx-opaque-keys',
         'semantic_version',
+        'pyjwkest==1.3.2',
         'python-dateutil>=2.0',
         'requests>=2.7.0,<3.0.0',
         'rest-condition>=1.0.3,<2.0',

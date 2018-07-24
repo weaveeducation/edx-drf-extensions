@@ -1,4 +1,7 @@
 """
+NOTE: Support for multiple JWT_ISSUERS is deprecated.  Instead, Asymmetric JWTs
+make this simpler by using JWK keysets to list all available public keys.
+
 Settings for edx-drf-extensions are all namespaced in the EDX_DRF_EXTENSIONS setting.
 For example your project's `settings.py` file might look like this:
 
@@ -81,3 +84,14 @@ def get_jwt_issuers():
         return jwt_issuers
     # If we do not, return the deprecated configuration
     return _get_deprecated_jwt_issuers()
+
+
+def get_first_jwt_issuer():
+    """
+    Retrieves the first issuer in the JWT_ISSUERS list.
+    
+    As mentioned above, support for multiple JWT_ISSUERS is deprecated. They
+    are currently used only to distinguish the "ISSUER" field across sites.
+    So in many cases, we just need the first issuer value.
+    """
+    return get_jwt_issuers()[0]
