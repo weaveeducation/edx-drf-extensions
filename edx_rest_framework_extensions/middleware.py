@@ -59,7 +59,8 @@ class EnsureJWTAuthSettingsMiddleware(object):
             view_class.permission_classes += tuple(classes_to_add)
 
     def process_view(self, request, view_func, view_args, view_kwargs):  # pylint: disable=unused-argument
-        view_class = getattr(view_func, 'view_class', view_func)
+        view_set = getattr(view_func, 'view_class', view_func)
+        view_class = getattr(view_set, 'cls', view_set)
 
         view_authentication_classes = getattr(view_class, 'authentication_classes', tuple())
         if self._includes_base_class(view_authentication_classes, BaseJSONWebTokenAuthentication):
