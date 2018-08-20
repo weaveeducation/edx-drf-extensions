@@ -6,7 +6,7 @@ import ddt
 from django.contrib.auth.models import AnonymousUser
 from mock import call, patch
 
-from django.test import TestCase, RequestFactory
+from django.test import override_settings, TestCase, RequestFactory
 from rest_condition import C
 from rest_framework.authentication import SessionAuthentication
 from rest_framework_jwt.authentication import BaseJSONWebTokenAuthentication
@@ -15,7 +15,10 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSet
 
 from edx_rest_framework_extensions.tests.factories import UserFactory
-from ..middleware import EnsureJWTAuthSettingsMiddleware, RequestMetricsMiddleware
+from ..middleware import (
+    EnsureJWTAuthSettingsMiddleware,
+    RequestMetricsMiddleware,
+)
 from ..permissions import (
     IsSuperuser,
     IsStaff,
@@ -164,6 +167,7 @@ class TestEnsureJWTAuthSettingsMiddleware(TestCase):
             HasNoCondPermView.permission_classes
         )
         self.assertIn(NotJwtRestrictedApplication, HasNoCondPermView.permission_classes)
+
 
 @ddt.ddt
 class TestRequestMetricsMiddleware(TestCase):
