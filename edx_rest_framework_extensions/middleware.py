@@ -153,7 +153,7 @@ class RequestMetricsMiddleware(object):
                 auth_type = 'other-token-type'
         elif not hasattr(request, 'user') or not request.user:
             auth_type = 'no-user'
-        elif not request.user.is_authenticated():
+        elif not request.user.is_authenticated:
             auth_type = 'unauthenticated'
         else:
             auth_type = 'session-or-unknown'
