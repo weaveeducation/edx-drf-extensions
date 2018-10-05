@@ -12,6 +12,10 @@ INSTALLED_APPS = (
     'django.contrib.contenttypes',
     'django_nose',
     'edx_rest_framework_extensions',
+    'oauth2_provider',
+    'provider',
+    'provider.oauth2',
+    'edx_oauth2_provider',
     'waffle',
 )
 
@@ -29,6 +33,8 @@ DATABASES = {
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 
 EDX_DRF_EXTENSIONS = {}
+
+OAUTH_OIDC_ISSUER = 'https:/example.com/oauth2'
 
 # USER_SETTINGS overrides for djangorestframework-jwt APISettings class
 # See https://github.com/GetBlimp/django-rest-framework-jwt/blob/master/rest_framework_jwt/settings.py

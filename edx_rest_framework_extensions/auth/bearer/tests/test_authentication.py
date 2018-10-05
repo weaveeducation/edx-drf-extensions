@@ -23,11 +23,11 @@ User = get_user_model()
 
 
 class AccessTokenMixin(object):
-    """ Test mixin for dealing with OAuth2 access tokens. """
+    """ Test mixin for dealing with oauth2 access tokens. """
     DEFAULT_TOKEN = 'abc123'
 
     def mock_user_info_response(self, status=200, username=None):
-        """ Mock the user info endpoint response of the OAuth2 provider. """
+        """ Mock the user info endpoint response of the oauth2 provider. """
 
         username = username or USER_INFO['username']
         data = {

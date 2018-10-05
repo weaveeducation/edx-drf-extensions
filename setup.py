@@ -34,7 +34,11 @@ setup(
         'django>=1.8.9,<2.0',
         'djangorestframework',
         'djangorestframework-jwt>=1.7.2,<2.0.0',
+        'djangorestframework-oauth>=1.1.0,<2.0.0',
         'django-waffle',
+        'django-oauth-toolkit==1.1.2',
+        'edx-django-oauth2-provider',
+        'edx-oauth2-provider',
         'psutil==1.2.1',  # dependency of edx-django-utils
         'edx-django-utils',
         'edx-opaque-keys',

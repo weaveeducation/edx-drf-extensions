@@ -17,7 +17,7 @@ class BearerAuthentication(BaseAuthentication):
     """
     Simple token based authentication.
 
-    This authentication class is useful for authenticating an OAuth2 access token against a remote
+    This authentication class is useful for authenticating an oauth2 access token against a remote
     authentication provider. Clients should authenticate by passing the token key in the "Authorization" HTTP header,
     prepended with the string `"Bearer "`.
 
@@ -31,7 +31,7 @@ class BearerAuthentication(BaseAuthentication):
     """
 
     def get_user_info_url(self):
-        """ Returns the URL, hosted by the OAuth2 provider, from which user information can be pulled. """
+        """ Returns the URL, hosted by the oauth2 provider, from which user information can be pulled. """
         return get_setting('OAUTH2_USER_INFO_URL')
 
     def authenticate(self, request):
@@ -87,7 +87,7 @@ class BearerAuthentication(BaseAuthentication):
         Retrieves the user info from the OAuth provider.
 
         Arguments:
-            token (str): OAuth2 access token.
+            token (str): oauth2 access token.
 
         Returns:
             dict
