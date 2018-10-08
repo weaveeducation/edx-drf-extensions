@@ -11,3 +11,9 @@ from edx_rest_framework_extensions.auth.jwt.authentication import (
 from edx_rest_framework_extensions.auth.bearer.authentication import (
     BearerAuthentication,
 )  # pylint: disable=unused-import
+from edx_rest_framework_extensions.auth.session.authentication import (
+    SessionAuthenticationAllowInactiveUser
+)  # pylint: disable=unused-import
+from edx_rest_framework_extensions.auth.oauth2.authentication import (
+    OAuth2AuthenticationAllowInactiveUser
+)  # pylint: disable=unused-import
