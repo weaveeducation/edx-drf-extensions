@@ -93,7 +93,7 @@ def _set_token_defaults(token):
         )
         if jwt_version.major > supported_version.major:
             logger.info('Token decode failed due to unsupported JWT version number [%s]', str(jwt_version))
-            raise jwt.InvalidTokenError
+            raise jwt.InvalidTokenError('JWT version number [%s] is unsupported', str(jwt_version))
 
     def _get_and_set_version(token):
         """
