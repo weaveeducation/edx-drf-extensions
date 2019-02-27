@@ -3,6 +3,16 @@ Middleware to ensure best practices of DRF and other endpoints.
 """
 from edx_django_utils import monitoring
 
+from django.conf import settings
+from django.contrib.auth.models import Group
+from django.core.cache import cache
+
+from edx_rest_framework_extensions.auth.jwt.cookies import (
+    jwt_cookie_name,
+)
+from edx_rest_framework_extensions.auth.jwt.decoder import jwt_decode_handler
+from edx_rest_framework_extensions.auth.jwt.authentication import JwtAuthentication
+
 
 class RequestMetricsMiddleware(object):
     """
@@ -100,3 +110,58 @@ class RequestMetricsMiddleware(object):
         else:
             auth_type = 'session-or-unknown'
         monitoring.set_custom_metric('request_auth_type', auth_type)
+
+class JwtAuthCookieRoleMiddleware(object):
+    """
+    """
+    @staticmethod
+    def add_user_role(role, user):
+        mapped_role = settings.ROLE_MAPPING.get(role)
+        if mapped_role and not user.groups.filter(name=mapped_role).exists():
+            group, _ = Group.objects.get_or_create(name=mapped_role)
+            group.user_set.add(user)
+
+    @staticmethod
+    def remove_user_role(role, user):
+        mapped_role = settings.ROLE_MAPPING.get(role)
+        if mapped_role and user.groups.filter(name=mapped_role).exists():
+            group, _ = Group.objects.get_or_create(name=mapped_role)
+            group.user_set.remove(user)
+
+    def process_request(self, request):
+        """
+        """
+        user = request.user
+        jwt_cookie = request.COOKIES.get(jwt_cookie_name(), None)
+        if not jwt_cookie:
+            return
+
+        decoded_jwt = jwt_decode_handler(jwt_cookie)
+        if not request.user.is_authenticated:
+            user = JwtAuthentication().authenticate_credentials(decoded_jwt)
+
+        roles_claim = decoded_jwt.get('roles')
+        role_cache_key = '{user_id}:role_metadata'.format(user_id=user.id)
+        previous_role_cache_data = cache.get(role_cache_key) or {}
+
+        if not roles_claim:
+            for role in previous_role_cache_data.keys():
+                self.remove_user_role(role, user)
+            cache.delete(role_cache_key)
+            return
+
+        role_cache_data = {}
+        for role_data in roles_claim:
+            role, object_type, object_key = role_data.split(':')
+            self.add_user_role(role, user)
+
+            if role not in role_cache_data:
+                role_cache_data[role] = []
+
+            role_cache_data[role].append(object_key)
+
+        for role in previous_role_cache_data.keys():
+            if role not in role_cache_data:
+                self.remove_user_role(role, user)
+
+        cache.set(role_cache_key, role_cache_data)
