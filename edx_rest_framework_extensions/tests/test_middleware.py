@@ -15,7 +15,7 @@ from edx_rest_framework_extensions.auth.jwt.tests.utils import (
     generate_jwt_token,
     generate_unversioned_payload,
 )
-from edx_rest_framework_extensions.tests.factories import UserFactory, AnonymousUserFactory
+from edx_rest_framework_extensions.tests.factories import UserFactory
 from edx_rest_framework_extensions.middleware import (
     JwtAuthCookieRoleMiddleware,
     RequestMetricsMiddleware,
