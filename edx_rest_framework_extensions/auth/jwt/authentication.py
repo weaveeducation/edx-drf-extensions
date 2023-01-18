@@ -148,7 +148,7 @@ class JwtAuthentication(JSONWebTokenAuthentication):
             if attributes_updated:
                 user.save()
         except Exception as authentication_error:
-            msg = 'User retrieval failed.'
+            msg = f'[edx-drf-extensions] User retrieval failed for username {username}.'
             logger.exception(msg)
             raise exceptions.AuthenticationFailed(msg) from authentication_error
 
