@@ -173,18 +173,76 @@ def _set_token_defaults(token):
 
 
 def _verify_jwt_signature(token, jwt_issuer, decode_symmetric_token):
+    """
+    Verifies the JWT signature. Raises InvalidTokenError in the event of an error.
+
+    Arguments:
+        token (str): JWT to be decoded.
+        jwt_issuer (dict): A dict of JWT issuer related settings, containing the symmetric key.
+        decode_symmetric_token (bool): Whether to decode symmetric tokens or not. Pass False for asymmetric tokens only
+    """
+    # .. custom_attribute_name: jwt_auth_check_symmetric_key
+    # .. custom_attribute_description: True if symmetric keys will also be used for checking
+    #   the JWT signature, and False if only asymmetric keys will be used.
+    set_custom_attribute('jwt_auth_check_symmetric_key', decode_symmetric_token)
+
+    # For observability purposes, we will first try asymmetric keys only to verify
+    #   that we no longer need the symmetric key. However, if this fails, we will
+    #   continue on to the original code path and try all keys (including symmetric)
+    #   and add monitoring to let us know. This is meant to be temporary, until we
+    #   can fully retire code paths for symmetric keys, as part of
+    #   DEPR: Symmetric JWTs: https://github.com/openedx/public-engineering/issues/83
+
+    # Use add_symmetric_keys=False to only include asymmetric keys at first
+    key_set = _get_signing_jwk_key_set(jwt_issuer, add_symmetric_keys=False)
+    # .. custom_attribute_name: jwt_auth_verify_asymmetric_keys_count
+    # .. custom_attribute_description: Number of JWT verification keys in use for this
+    #   verification. Should be same as number of asymmetric public keys. This is
+    #   intended to aid in key rotations; once the average count stabilizes at a
+    #   higher number after adding a public key, it should be safe to change the secret key.
+    set_custom_attribute('jwt_auth_verify_asymmetric_keys_count', len(key_set))
+
+    try:
+        _ = JWS().verify_compact(token, key_set)
+        # .. custom_attribute_name: jwt_auth_asymmetric_verified
+        # .. custom_attribute_description: Whether the JWT was successfully verified
+        #   using an asymmetric key.
+        set_custom_attribute('jwt_auth_asymmetric_verified', True)
+        return
+    except Exception:  # pylint: disable=broad-except
+        # Continue to the old code path of trying all keys
+        pass
+
+    # The following is the original code that includes both the symmetric and asymmetric keys
+    #   as requested with the decode_symmetric_token argument. Note that the check against
+    #   the asymmetric keys here is redundant and unnecessary, but this code is temporary and
+    #   will be simplified once symmetric keys have been fully retired.
+
     key_set = _get_signing_jwk_key_set(jwt_issuer, add_symmetric_keys=decode_symmetric_token)
-    # .. custom_attribute_name: jwt_auth_verify_keys_count
+    # .. custom_attribute_name: jwt_auth_verify_all_keys_count
     # .. custom_attribute_description: Number of JWT verification keys in use for this
     #   verification. Should be same as number of asymmetric public keys, plus one if
     #   a symmetric key secret is set. This is intended to aid in key rotations; once
     #   the average count stabilizes at a higher number after adding a public key, it
     #   should be safe to change the secret key.
-    set_custom_attribute('jwt_auth_verify_keys_count', len(key_set))
+    set_custom_attribute('jwt_auth_verify_all_keys_count', len(key_set))
 
     try:
         _ = JWS().verify_compact(token, key_set)
+        # .. custom_attribute_name: jwt_auth_symmetric_verified
+        # .. custom_attribute_description: Whether the JWT was successfully verified
+        #   using a symmetric key.
+        # Note: Rather than using a single custom attribute like ``jwt_auth_verified``
+        #   with values of 'symmetric' or 'asymmetric', we use two separate custom
+        #   attribute names (e.g. jwt_auth_symmetric_verified and jwt_auth_asymmetric_verified),
+        #   so that if each of these were set separately in the same request, they
+        #   wouldn't clobber each other.
+        set_custom_attribute('jwt_auth_symmetric_verified', True)
+        return
     except Exception as token_error:
+        # .. custom_attribute_name: jwt_auth_verification_failed
+        # .. custom_attribute_description: True if the JWT token verification failed.
+        set_custom_attribute('jwt_auth_verification_failed', True)
         logger.exception('Token verification failed.')
         exc_info = sys.exc_info()
         raise jwt.InvalidTokenError(exc_info[2]) from token_error
