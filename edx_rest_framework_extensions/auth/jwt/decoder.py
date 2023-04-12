@@ -274,8 +274,19 @@ def _decode_and_verify_token(token, jwt_issuer):
 
     # TODO (ARCH-204): verify issuer manually until it is properly configured.
     token_issuer = decoded_token.get('iss')
+    # .. custom_attribute_name: jwt_auth_issuer
+    # .. custom_attribute_description: Value set to the JWT auth issuer.
+    set_custom_attribute('jwt_auth_issuer', token_issuer)
     issuer_matched = any(issuer['ISSUER'] == token_issuer for issuer in get_jwt_issuers())
-    if not issuer_matched:
+    if token_issuer == jwt_issuer['ISSUER']:
+        # .. custom_attribute_name: jwt_auth_issuer_verification
+        # .. custom_attribute_description: Depending on issuer verification, the value will
+        #   be one of: matches-first-issuer, matches-later-issuer, or no-match.
+        set_custom_attribute('jwt_auth_issuer_verification', 'matches-first-issuer')
+    elif issuer_matched:
+        set_custom_attribute('jwt_auth_issuer_verification', 'matches-later-issuer')
+    else:
+        set_custom_attribute('jwt_auth_issuer_verification', 'no-match')
         logger.info('Token decode failed due to mismatched issuer [%s]', token_issuer)
         raise jwt.InvalidTokenError('%s is not a valid issuer.' % token_issuer)
 
